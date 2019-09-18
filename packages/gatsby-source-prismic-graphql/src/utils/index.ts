@@ -2,7 +2,6 @@ import { setContext } from 'apollo-link-context';
 import { HttpLink } from 'apollo-link-http';
 import { HttpOptions } from 'apollo-link-http-common';
 import Prismic from 'prismic-javascript';
-import { getRootQuery } from 'gatsby-source-graphql-universal/getRootQuery';
 import { parseQueryString } from './parseQueryString';
 
 interface IPrismicLinkArgs extends HttpOptions {
@@ -98,20 +97,4 @@ export function PrismicLink({ uri, accessToken, customRef, ...rest }: IPrismicLi
   } else {
     throw new Error(`${uri} isn't a valid Prismic GraphQL endpoint`);
   }
-}
-
-export function createDocumentPreviewPage(createPage: Function, page: any, lang?: string) {
-  const rootQuery = getRootQuery(page.component);
-
-  createPage({
-    path: page.path,
-    matchPath: process.env.NODE_ENV === 'production' ? undefined : page.match,
-    component: page.component,
-    context: {
-      rootQuery,
-      id: '',
-      uid: '',
-      lang,
-    },
-  });
 }

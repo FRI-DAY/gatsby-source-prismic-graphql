@@ -1,10 +1,11 @@
 import path from 'path';
 import { getRootQuery } from 'gatsby-source-graphql-universal/getRootQuery';
 import { onCreateWebpackConfig, sourceNodes } from 'gatsby-source-graphql-universal/gatsby-node';
-import { fieldName, PrismicLink, typeName, createDocumentPreviewPage } from './utils';
+import { fieldName, PrismicLink, typeName } from './utils';
 import { PluginOptions } from './interfaces/PluginOptions';
 import { createRemoteFileNode } from 'gatsby-source-filesystem';
 import pathToRegexp from 'path-to-regexp';
+import { createDocumentPreviewPage } from './utils/createDocumentPreviewPage';
 
 exports.onCreateWebpackConfig = onCreateWebpackConfig;
 
