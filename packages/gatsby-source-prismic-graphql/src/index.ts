@@ -8,4 +8,5 @@ export {
   linkResolver,
   fieldName,
   typeName,
+  createDocumentPreviewPage,
 } from './utils';

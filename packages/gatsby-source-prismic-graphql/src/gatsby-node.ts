@@ -1,7 +1,7 @@
 import path from 'path';
 import { getRootQuery } from 'gatsby-source-graphql-universal/getRootQuery';
 import { onCreateWebpackConfig, sourceNodes } from 'gatsby-source-graphql-universal/gatsby-node';
-import { fieldName, PrismicLink, typeName } from './utils';
+import { fieldName, PrismicLink, typeName, createDocumentPreviewPage } from './utils';
 import { PluginOptions } from './interfaces/PluginOptions';
 import { createRemoteFileNode } from 'gatsby-source-filesystem';
 import pathToRegexp from 'path-to-regexp';
@@ -123,17 +123,7 @@ exports.createPages = async ({ graphql, actions: { createPage } }: any, options:
       await createPageRecursively(page, endCursor);
     } else {
       // If there are no more pages, create the preview page for this page type
-      createPage({
-        path: page.path,
-        matchPath: process.env.NODE_ENV === 'production' ? undefined : page.match,
-        component: page.component,
-        context: {
-          rootQuery,
-          id: '',
-          uid: '',
-          lang: options.defaultLang,
-        },
-      });
+      createDocumentPreviewPage(createPage, page, options.defaultLang);
     }
   }
 
