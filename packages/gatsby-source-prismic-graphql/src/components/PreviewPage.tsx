@@ -80,25 +80,40 @@ export default class PreviewPage extends React.Component<any> {
 
     const link = linkResolver(doc);
 
-    const urlWithQueryString = (this.config.pages || [])
-      .map((page: any) => {
-        const keys: any = [];
-        const re = pathToRegexp(page.match, keys);
-        const match = re.exec(link);
-        const delimiter = (str: string) => (str.indexOf('?') === -1 ? '?' : '&');
-        if (match) {
-          return match
-            .slice(1)
-            .reduce(
-              (acc, value, i) =>
-                acc + (keys[i] ? `${delimiter(acc)}${keys[i].name}=${value}` : value),
-              page.path
-            );
-        }
-        return null;
-      })
-      .find((n: any) => !!n);
+    let urlWithQueryString;
 
+    // An ugly and highly specific friday.de hack to be able to get previews
+    // working for unpublished documents. The standard way fails because we
+    // are not using a page configs array due to our unorthodox URL scheme
+    // requirements.
+    if (doc.type === 'dynamic_page') {
+      // This path MUST match the one used in the client code's gatsby-node when
+      // calling createDocumentPreviewPage.
+      const previewPagePath = '/dynamic-preview';
+      urlWithQueryString = `${previewPagePath}?uid=${doc.uid}`;
+    } else {
+      urlWithQueryString = (this.config.pages || [])
+        .map((page: any) => {
+          const keys: any = [];
+          const re = pathToRegexp(page.match, keys);
+          const match = re.exec(link);
+          const delimiter = (str: string) => (str.indexOf('?') === -1 ? '?' : '&');
+          if (match) {
+            return match
+              .slice(1)
+              .reduce(
+                (acc, value, i) =>
+                  acc + (keys[i] ? `${delimiter(acc)}${keys[i].name}=${value}` : value),
+                page.path
+              );
+          }
+          return null;
+        })
+        .find((n: any) => !!n);
+    }
+
+    // This will always return true in dev builds because of Gatsby's special
+    // development 404 page.
     const exists = (await fetch(link).then(res => res.status)) === 200;
 
     if (!exists && urlWithQueryString) {
