@@ -1,6 +1,6 @@
 {
   "private": false,
-  "name": "gatsby-source-prismic-graphql",
+  "name": "@fridayde/gatsby-source-prismic-graphql",
   "description": "Source data from Prismic with GraphQL",
   "license": "MIT",
   "author": "Birkir Gudjonsson <birkir.gudjonsson@gmail.com>",
