@@ -47,7 +47,6 @@ function createDocumentPreviewPage(createPage: Function, page: Page, lang?: stri
   const rootQuery = getRootQuery(page.component);
   createPage({
     path: page.path,
-    matchPath: process.env.NODE_ENV === 'production' ? undefined : page.matchPath,
     component: page.component,
     context: {
       rootQuery,
@@ -178,10 +177,7 @@ exports.createPages = async ({ graphql, actions: { createPage } }: any, options:
       const newEndCursor: string = response.pageInfo.endCursor;
       await createPagesForType(page, lang, newEndCursor, documents);
     } else {
-      // if there is a placeholder page, then create a document preview for it
-      if (page.path) {
-        createDocumentPreviewPage(createPage, page, lang);
-      }
+      createDocumentPreviewPage(createPage, page, lang);
       createDocumentPages(createPage, documents, options, page);
     }
   }

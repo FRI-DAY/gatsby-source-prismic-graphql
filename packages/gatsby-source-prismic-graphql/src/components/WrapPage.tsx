@@ -1,6 +1,5 @@
 import { getIsolatedQuery } from 'gatsby-source-graphql-universal';
 import { pick, get } from 'lodash';
-import pathToRegexp from 'path-to-regexp';
 import Prismic from 'prismic-javascript';
 import React from 'react';
 import traverse from 'traverse';
@@ -8,6 +7,7 @@ import { fieldName, getCookies, typeName } from '../utils';
 import { createLoadingScreen } from '../utils/createLoadingScreen';
 import { getApolloClient } from '../utils/getApolloClient';
 import { parseQueryString } from '../utils/parseQueryString';
+import { KEYS } from '../constants';
 
 const queryOrSource = (obj: any) => {
   if (typeof obj === 'string') {
@@ -45,24 +45,11 @@ export class WrapPage extends React.PureComponent<any, WrapPageState> {
     error: null,
   };
 
-  keys = ['uid', 'id', 'lang'];
-
   get params() {
     const params: any = { ...this.props.pageContext };
 
-    const keys: any = [];
-    const re = pathToRegexp(get(this.props.pageContext, 'matchPath', ''), keys);
-    const match = re.exec(get(this.props, 'location.pathname', ''));
-    if (match) {
-      keys.forEach((value: any, index: number) => {
-        if (!params[value.name]) {
-          params[value.name] = match[index + 1];
-        }
-      });
-    }
-
     const qs = parseQueryString(String(get(this.props, 'location.search', '?')).substr(1));
-    this.keys.forEach((key: string) => {
+    KEYS.forEach((key: string) => {
       if (!params[key] && qs.has(key)) {
         params[key] = qs.get(key);
       }
@@ -126,7 +113,7 @@ export class WrapPage extends React.PureComponent<any, WrapPageState> {
       query += queryOrSource(fragment);
     });
 
-    const keys = [...(this.props.options.passContextKeys || []), ...this.keys];
+    const keys = [...(this.props.options.passContextKeys || []), ...KEYS];
     variables = { ...pick(this.params, keys), ...variables };
 
     return getApolloClient(this.props.options).then(client => {

@@ -23,13 +23,9 @@ export interface Page {
   langs?: string[];
   sortBy?: string;
   /**
-   * placeholder page path
+   * placeholder page path for previewing unpublished pages
    */
-  path?: string;
-  /**
-   * client page match route
-   */
-  matchPath?: string;
+  path: string;
 }
 
 export interface PluginOptions {

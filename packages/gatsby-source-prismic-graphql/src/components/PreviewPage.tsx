@@ -2,8 +2,9 @@ import React from 'react';
 import Prismic from 'prismic-javascript';
 import { linkResolver, getCookies } from '../utils';
 import { parseQueryString } from '../utils/parseQueryString';
-import pathToRegexp from 'path-to-regexp';
 import { Page } from '../interfaces/PluginOptions';
+import { Document } from 'prismic-javascript/d.ts/documents';
+import { KEYS } from '../constants';
 
 interface Variation {
   id: string;
@@ -69,49 +70,33 @@ export default class PreviewPage extends React.Component<any> {
       const cookies = getCookies();
       const doc = await api.getByID(documentId);
       const preview = cookies.has(Prismic.previewCookie) || cookies.has(Prismic.experimentCookie);
-      this.redirect(preview && doc);
+      this.redirect(preview && doc ? doc : undefined);
     }
   }
 
-  public redirect = async (doc?: any) => {
-    if (!doc) {
-      (window as any).location = '/';
-      return;
-    }
+  public redirect = async (doc?: Document) => {
+    if (doc) {
+      const link = linkResolver(doc);
+      const exists = (await fetch(link).then(res => res.status)) === 200;
 
-    const link = linkResolver(doc);
-    const exists = (await fetch(link).then(res => res.status)) === 200;
-
-    if (exists) {
-      window.location = link as any;
-    } else {
-      const urlWithQueryString = (this.config.pages || [])
-        .map((page: Page) => {
-          const keys: any = [];
-          if (page.path && page.matchPath) {
-            const re = pathToRegexp(page.matchPath, keys);
-            const match = re.exec(link);
-            const delimiter = (str: string) => (str.indexOf('?') === -1 ? '?' : '&');
-            if (match) {
-              return match
-                .slice(1)
-                .reduce(
-                  (acc, value, i) =>
-                    acc + (keys[i] ? `${delimiter(acc)}${keys[i].name}=${value}` : value),
-                  page.path
-                );
-            }
-          }
-          return null;
-        })
-        .find((n: any) => !!n);
-
-      if (urlWithQueryString) {
-        window.location = urlWithQueryString;
+      if (exists) {
+        return (window.location = link as any);
       } else {
-        window.location = '/' as any;
+        const previewPage: Page | null = (this.config.pages || []).find(
+          (page: Page) => page.type.toLowerCase() === doc.type.toLowerCase()
+        );
+        if (previewPage) {
+          return ((window as any).location =
+            previewPage.path +
+            '?' +
+            KEYS.map(key => {
+              return `${key}=${encodeURIComponent(doc[key] || '')}`;
+            }).join('&'));
+        }
       }
     }
+
+    window.location = '/' as any;
   };
 
   public render() {
