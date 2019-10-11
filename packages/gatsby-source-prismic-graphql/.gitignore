@@ -2,3 +2,4 @@
 ./utils/*.js
 ./interfaces/*.js
 types
+.npmrc
