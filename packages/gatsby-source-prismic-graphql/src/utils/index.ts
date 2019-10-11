@@ -3,6 +3,7 @@ import { HttpLink } from 'apollo-link-http';
 import { HttpOptions } from 'apollo-link-http-common';
 import Prismic from 'prismic-javascript';
 import { parseQueryString } from './parseQueryString';
+import { LinkResolver } from '../interfaces/PluginOptions';
 
 interface IPrismicLinkArgs extends HttpOptions {
   uri: string;
@@ -17,14 +18,22 @@ export const fieldName = 'prismic';
 export const typeName = 'PRISMIC';
 
 // keep link resolver function
-export let linkResolver: (doc: any) => string = () => '/';
+export let linkResolver: LinkResolver = () => '/';
 
-export function registerLinkResolver(link: typeof linkResolver) {
-  linkResolver = link;
+export function registerLinkResolver(resolver: LinkResolver) {
+  linkResolver = resolver;
 }
 
 export function getCookies() {
   return parseQueryString(document.cookie, ';');
+}
+
+export function getDocumentIndexFromCursor(cursor: string) {
+  return atob(cursor).split(':')[1];
+}
+
+export function getCursorFromDocumentIndex(index: number) {
+  return btoa(`arrayconnection:${index}`);
 }
 
 export function fetchStripQueryWhitespace(url: string, ...args: any) {
