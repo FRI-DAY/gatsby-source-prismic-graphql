@@ -76,18 +76,17 @@ export default class PreviewPage extends React.Component<any> {
 
   public redirect = async (doc?: Document) => {
     if (doc) {
-      const link = linkResolver(doc);
-
       const previewPage: Page | null = (this.config.pages || []).find(
         (page: Page) => page.type.toLowerCase() === doc.type.toLowerCase()
       );
       if (previewPage) {
-        return ((window as any).location =
+        const url =
           previewPage.path +
           '?' +
           KEYS.map(key => {
             return `${key}=${encodeURIComponent(doc[key] || '')}`;
-          }).join('&'));
+          }).join('&');
+        return (window.location = url as any);
       }
     }
 
