@@ -71,10 +71,12 @@ export default class PreviewPage extends React.Component<any> {
       const doc = await api.getByID(documentId);
       const preview = cookies.has(Prismic.previewCookie) || cookies.has(Prismic.experimentCookie);
       this.redirect(preview && doc ? doc : undefined);
+    } else {
+      this.redirect();
     }
   }
 
-  public redirect = async (doc?: Document) => {
+  public redirect(doc?: Document) {
     if (doc) {
       const previewPage: Page | null = (this.config.pages || []).find(
         (page: Page) => page.type.toLowerCase() === doc.type.toLowerCase()
@@ -86,12 +88,12 @@ export default class PreviewPage extends React.Component<any> {
           KEYS.map(key => {
             return `${key}=${encodeURIComponent(doc[key] || '')}`;
           }).join('&');
-        return (window.location = url as any);
+        window.location = url as any;
+        return;
       }
     }
-
     window.location = '/' as any;
-  };
+  }
 
   public render() {
     return null;
