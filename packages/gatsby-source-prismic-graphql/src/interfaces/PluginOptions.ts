@@ -1,17 +1,40 @@
-interface Page {
+import { Document } from 'prismic-javascript/d.ts/documents';
+
+export interface AlternateLanguage {
+  id: string;
+  uid: string;
   type: string;
-  match: string;
-  path: string;
+  lang: string;
+}
+
+export type LinkResolver = (doc?: Document) => string;
+
+export interface Edge {
+  node: {
+    _meta: Document;
+  };
+  cursor: string;
+  endCursor: string;
+}
+
+export interface Page {
+  type: string;
   component: string;
-  lang?: string;
+  langs?: string[];
+  sortBy?: string;
+  /**
+   * placeholder page path for previewing unpublished pages
+   */
+  path: string;
 }
 
 export interface PluginOptions {
   repositoryName: string;
   accessToken?: null | string;
   prismicRef?: null | string;
-  linkResolver?: Function;
+  linkResolver: LinkResolver;
   defaultLang?: string;
+  langs?: string[];
   passContextKeys?: string[];
   previewPath?: string;
   previews?: boolean;
