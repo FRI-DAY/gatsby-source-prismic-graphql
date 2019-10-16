@@ -82,12 +82,15 @@ export default class PreviewPage extends React.Component<any> {
         (page: Page) => page.type.toLowerCase() === doc.type.toLowerCase()
       );
       if (previewPage) {
+        console.log(doc);
         const url =
           previewPage.path +
           '?' +
           KEYS.map(key => {
             return `${key}=${encodeURIComponent(doc[key] || '')}`;
           }).join('&');
+        console.log(url);
+        return;
         window.location = url as any;
         return;
       }
