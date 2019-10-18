@@ -1,26 +1,26 @@
-export interface AlternateLanguage {
-  id: string;
-  uid: string;
-  type: string;
-  lang: string;
-}
 export interface PrismicMeta {
   id: string;
   uid?: string;
   type: string;
-  href: string;
-  tags: string[];
-  slugs: string[];
-  lang?: string;
-  alternate_languages: string[];
-  first_publication_date: string | null;
-  last_publication_date: string | null;
+  lang: string | null;
 }
 
-export type LinkResolver = (_meta?: PrismicMeta) => string;
+export interface PrismicInternalLink extends PrismicMeta {
+  link_type: 'Document';
+}
+
+export interface PrismicExternalLink {
+  link_type: 'Web';
+  url: string;
+}
+
+export type PrismicLink = PrismicInternalLink | PrismicExternalLink;
+
+export type LinkResolver = (linkData?: PrismicLink) => string;
 
 export interface Edge {
   node: {
+    link_type: string;
     _meta: PrismicMeta;
   };
   cursor: string;

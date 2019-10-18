@@ -76,7 +76,10 @@ function createDocumentPages(
 
     // ...and create the page
     createPage({
-      path: options.linkResolver(node._meta),
+      path: options.linkResolver({
+        link_type: 'Document',
+        ...node._meta,
+      }),
       component: page.component,
       context: {
         rootQuery,
@@ -123,12 +126,6 @@ const getDocumentsQuery = ({
               lang
               uid
               type
-              alternateLanguages {
-                id
-                lang
-                type
-                uid
-              }
             }
           }
         }
