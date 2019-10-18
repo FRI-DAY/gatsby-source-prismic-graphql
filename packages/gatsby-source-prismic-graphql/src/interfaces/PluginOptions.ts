@@ -4,7 +4,7 @@ export interface AlternateLanguage {
   type: string;
   lang: string;
 }
-export interface PrismiceMeta {
+export interface PrismicMeta {
   id: string;
   uid?: string;
   type: string;
@@ -17,11 +17,11 @@ export interface PrismiceMeta {
   last_publication_date: string | null;
 }
 
-export type LinkResolver = (_meta?: PrismiceMeta) => string;
+export type LinkResolver = (_meta?: PrismicMeta) => string;
 
 export interface Edge {
   node: {
-    _meta: PrismiceMeta;
+    _meta: PrismicMeta;
   };
   cursor: string;
   endCursor: string;

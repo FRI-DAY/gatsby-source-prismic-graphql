@@ -1,3 +1,3 @@
-import { PrismiceMeta } from './interfaces/PluginOptions';
+import { PrismicMeta } from './interfaces/PluginOptions';
 
-export const KEYS: Array<keyof PrismiceMeta> = ['uid', 'lang', 'id'];
+export const KEYS: Array<keyof PrismicMeta> = ['uid', 'lang', 'id'];
