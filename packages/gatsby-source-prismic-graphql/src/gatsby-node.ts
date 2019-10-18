@@ -2,7 +2,7 @@ import path from 'path';
 import { getRootQuery } from 'gatsby-source-graphql-universal/getRootQuery';
 import { onCreateWebpackConfig, sourceNodes } from 'gatsby-source-graphql-universal/gatsby-node';
 import { fieldName, PrismicLink, typeName } from './utils';
-import { Page, PluginOptions, Edge } from './interfaces/PluginOptions';
+import { Page, PluginOptions, Edge, PrismicLinkProps } from './interfaces/PluginOptions';
 import { createRemoteFileNode } from 'gatsby-source-filesystem';
 
 exports.onCreateWebpackConfig = onCreateWebpackConfig;
@@ -75,11 +75,20 @@ function createDocumentPages(
     const nextEdge = index < edges.length - 1 ? edges[index + 1] : null;
 
     // ...and create the page
+    const data: PrismicLinkProps = {
+      link_type: 'Document',
+      ...node._meta,
+    };
+    const extraData = (page.extraFields || []).reduce(
+      (res, current: string) => {
+        res[current] = (node as any)[current];
+        return res;
+      },
+      {} as any
+    );
+
     createPage({
-      path: options.linkResolver({
-        link_type: 'Document',
-        ...node._meta,
-      }),
+      path: options.linkResolver(data, extraData),
       component: page.component,
       context: {
         rootQuery,
@@ -101,9 +110,11 @@ function createDocumentPages(
 const getDocumentsQuery = ({
   documentType,
   sortType,
+  extraFields,
 }: {
   documentType: string;
   sortType: string;
+  extraFields: string[];
 }): string => `
   query AllPagesQuery ($after: String, $lang: String, $sortBy: ${sortType}) {
     prismic {
@@ -127,6 +138,9 @@ const getDocumentsQuery = ({
               uid
               type
             }
+            ${extraFields.map(field => {
+              return field + '\n';
+            })}
           }
         }
       }
@@ -151,7 +165,11 @@ exports.createPages = async ({ graphql, actions: { createPage } }: any, options:
     // Prepare and execute query
     const documentType: string = `all${page.type}s`;
     const sortType: string = `PRISMIC_Sort${page.type}y`;
-    const query: string = getDocumentsQuery({ documentType, sortType });
+    const query: string = getDocumentsQuery({
+      documentType,
+      sortType,
+      extraFields: page.extraFields || [],
+    });
     const { data, errors } = await graphql(query, {
       after: endCursor,
       lang: lang,

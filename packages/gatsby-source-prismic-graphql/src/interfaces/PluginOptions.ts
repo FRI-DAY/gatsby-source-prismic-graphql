@@ -5,18 +5,22 @@ export interface PrismicMeta {
   lang: string | null;
 }
 
-export interface PrismicInternalLink extends PrismicMeta {
+export interface PrismicInternalLinkProps extends PrismicMeta {
   link_type: 'Document';
 }
 
-export interface PrismicExternalLink {
+export interface PrismicExternalLinkProps {
   link_type: 'Web';
   url: string;
+  target?: string;
 }
 
-export type PrismicLink = PrismicInternalLink | PrismicExternalLink;
+export type PrismicLinkProps = PrismicInternalLinkProps | PrismicExternalLinkProps;
 
-export type LinkResolver = (linkData?: PrismicLink) => string;
+export type LinkResolver = <ExtraData = any>(
+  linkData?: PrismicLinkProps,
+  extraData?: ExtraData
+) => string;
 
 export interface Edge {
   node: {
@@ -32,10 +36,8 @@ export interface Page {
   component: string;
   langs?: string[];
   sortBy?: string;
-  /**
-   * placeholder page path for previewing unpublished pages
-   */
   path: string;
+  extraFields?: string[];
 }
 
 export interface PluginOptions {
