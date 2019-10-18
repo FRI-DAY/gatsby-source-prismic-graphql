@@ -1,3 +1,3 @@
-import { Document } from 'prismic-javascript/d.ts/documents';
+import { PrismiceMeta } from './interfaces/PluginOptions';
 
-export const KEYS: Array<keyof Document> = ['uid', 'lang', 'id'];
+export const KEYS: Array<keyof PrismiceMeta> = ['uid', 'lang', 'id'];

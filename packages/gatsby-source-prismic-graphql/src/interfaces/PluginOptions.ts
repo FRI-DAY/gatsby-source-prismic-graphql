@@ -1,17 +1,27 @@
-import { Document } from 'prismic-javascript/d.ts/documents';
-
 export interface AlternateLanguage {
   id: string;
   uid: string;
   type: string;
   lang: string;
 }
+export interface PrismiceMeta {
+  id: string;
+  uid?: string;
+  type: string;
+  href: string;
+  tags: string[];
+  slugs: string[];
+  lang?: string;
+  alternate_languages: string[];
+  first_publication_date: string | null;
+  last_publication_date: string | null;
+}
 
-export type LinkResolver = (doc?: Document) => string;
+export type LinkResolver = (_meta?: PrismiceMeta) => string;
 
 export interface Edge {
   node: {
-    _meta: Document;
+    _meta: PrismiceMeta;
   };
   cursor: string;
   endCursor: string;
