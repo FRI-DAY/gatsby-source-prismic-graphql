@@ -86,7 +86,7 @@ export default class PreviewPage extends React.Component<any> {
           previewPage.path +
           '?' +
           KEYS.map(key => {
-            return `${key}=${encodeURIComponent(doc[key] || '')}`;
+            return `${key}=${encodeURIComponent((doc[key] as string) || '')}`;
           }).join('&');
         window.location = url as any;
         return;
