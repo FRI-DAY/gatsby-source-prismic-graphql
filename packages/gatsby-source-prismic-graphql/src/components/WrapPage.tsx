@@ -49,9 +49,17 @@ export class WrapPage extends React.PureComponent<any, WrapPageState> {
     return params;
   }
 
-  getQuery(): string {
+  getQuery() {
     const { rootQuery, queryFragments = [] } = this.props.pageContext;
-    return (rootQuery + queryFragments.join(' ')).replace(/\s+/gm, ' ');
+    const result = `${rootQuery}${queryFragments.join(' ')}`;
+    return result
+      .split(/\n\r?/gm)
+      .map((current: string) => current.trim())
+      .join(' ')
+      .replace(/\{\s+/gm, '{')
+      .replace(/\s+\{/gm, '{')
+      .replace(/\s+\}/gm, '}')
+      .replace(/\s+\}/gm, '}');
   }
 
   componentDidMount() {
