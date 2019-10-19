@@ -9,15 +9,6 @@ import { getApolloClient } from '../utils/getApolloClient';
 import { parseQueryString } from '../utils/parseQueryString';
 import { KEYS } from '../constants';
 
-const queryOrSource = (obj: any) => {
-  if (typeof obj === 'string') {
-    return obj.replace(/\s+/g, ' ');
-  } else if (obj.source) {
-    return String(obj.source).replace(/\s+/g, ' ');
-  }
-  return null;
-};
-
 const stripSharp = (query: any) => {
   return traverse(query).map(function(x) {
     if (
@@ -58,31 +49,19 @@ export class WrapPage extends React.PureComponent<any, WrapPageState> {
     return params;
   }
 
-  getQuery() {
-    const child = this.props.children as any;
-    let query = queryOrSource(get(this.props.pageContext, 'rootQuery')) || '';
-
-    if (child && child.type) {
-      if (child.type.query) {
-        query = queryOrSource(child.type.query) || '';
-      }
-
-      if (child.type.fragments && Array.isArray(child.type.fragments)) {
-        child.type.fragments.forEach((fragment: any) => {
-          query += queryOrSource(fragment);
-        });
-      }
-    }
-
-    return query;
+  getQuery(): string {
+    const { rootQuery, queryFragments = [] } = this.props.pageContext;
+    return (rootQuery + queryFragments.join(' ')).replace(/\s+/gm, ' ');
   }
 
   componentDidMount() {
     const { pageContext, options } = this.props;
+    const { rootQuery = null } = pageContext;
+
     const cookies = getCookies();
     const hasCookie = cookies.has(Prismic.experimentCookie) || cookies.has(Prismic.previewCookie);
 
-    if (pageContext.rootQuery && options.previews !== false && hasCookie) {
+    if (hasCookie && options.previews !== false && rootQuery) {
       const closeLoading = createLoadingScreen();
       this.setState({ loading: true });
       this.load()
@@ -102,26 +81,16 @@ export class WrapPage extends React.PureComponent<any, WrapPageState> {
     }
   }
 
-  load = ({ variables = {}, query, fragments = [], ...rest }: any = {}) => {
-    if (!query) {
-      query = this.getQuery();
-    } else {
-      query = queryOrSource(query);
-    }
-
-    fragments.forEach((fragment: any) => {
-      query += queryOrSource(fragment);
-    });
-
+  load = () => {
+    const query = this.getQuery();
     const keys = [...(this.props.options.passContextKeys || []), ...KEYS];
-    variables = { ...pick(this.params, keys), ...variables };
+    const variables = { ...pick(this.params, keys) };
 
     return getApolloClient(this.props.options).then(client => {
       return client.query({
         query: stripSharp(getIsolatedQuery(query, fieldName, typeName)),
         fetchPolicy: 'network-only',
         variables,
-        ...rest,
       });
     });
   };

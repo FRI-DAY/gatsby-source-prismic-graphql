@@ -1,20 +1,11 @@
 import path from 'path';
-import { getRootQuery } from 'gatsby-source-graphql-universal/getRootQuery';
 import { onCreateWebpackConfig, sourceNodes } from 'gatsby-source-graphql-universal/gatsby-node';
 import { fieldName, PrismicLink, typeName } from './utils';
 import { Page, PluginOptions, Edge, PrismicLinkProps } from './interfaces/PluginOptions';
 import { createRemoteFileNode } from 'gatsby-source-filesystem';
+import { getQueryAndFragments } from './utils/graphql';
 
 exports.onCreateWebpackConfig = onCreateWebpackConfig;
-
-exports.onCreatePage = ({ page, actions }: any) => {
-  const rootQuery = getRootQuery(page.componentPath);
-  page.context = page.context || {};
-  if (rootQuery) {
-    page.context.rootQuery = rootQuery;
-    actions.createPage(page);
-  }
-};
 
 exports.sourceNodes = (ref: any, options: PluginOptions) => {
   const opts = {
@@ -44,12 +35,13 @@ function createGeneralPreviewPage(createPage: Function, options: PluginOptions):
 }
 
 function createDocumentPreviewPage(createPage: Function, page: Page, lang?: string | null): void {
-  const rootQuery = getRootQuery(page.component);
+  const { graphqlQuery, graphqlFragments } = getQueryAndFragments(page.component, page.fragments);
   createPage({
     path: page.path,
     component: page.component,
     context: {
-      rootQuery,
+      rootQuery: graphqlQuery,
+      queryFragments: graphqlFragments,
       id: '',
       uid: '',
       lang,
@@ -67,7 +59,7 @@ function createDocumentPages(
   options: PluginOptions,
   page: Page
 ): void {
-  const rootQuery = getRootQuery(page.component);
+  const { graphqlQuery, graphqlFragments } = getQueryAndFragments(page.component);
 
   // Cycle through each document returned from query...
   edges.forEach(({ cursor, node }, index: number) => {
@@ -76,9 +68,10 @@ function createDocumentPages(
 
     // ...and create the page
     const data: PrismicLinkProps = {
-      link_type: 'Document',
-      ...node._meta,
+      link_type: 'Link.document',
+      _meta: node._meta,
     };
+
     const extraData = (page.extraFields || []).reduce(
       (res, current: string) => {
         res[current] = (node as any)[current];
@@ -91,7 +84,8 @@ function createDocumentPages(
       path: options.linkResolver(data, extraData),
       component: page.component,
       context: {
-        rootQuery,
+        rootQuery: graphqlQuery,
+        queryFragments: graphqlFragments,
         ...node._meta,
         cursor,
         paginationPreviousMeta: previousEdge ? previousEdge.node._meta : null,

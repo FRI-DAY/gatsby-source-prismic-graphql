@@ -1,21 +1,35 @@
-export interface PrismicMeta {
+export interface PrismicMetaProps {
   id: string;
   uid?: string;
   type: string;
   lang: string | null;
 }
 
-export interface PrismicInternalLinkProps extends PrismicMeta {
-  link_type: 'Document';
+export interface PrismicInternalLinkProps {
+  link_type: 'Link.document';
+  _meta: PrismicMetaProps;
 }
 
 export interface PrismicExternalLinkProps {
+  link_type: 'Link.web';
+  url: string;
+}
+
+export interface PrismicRichTextInternalLinkProps extends PrismicMetaProps {
+  link_type: 'Document';
+}
+
+export interface PrismicRichTextExternalLinkProps {
   link_type: 'Web';
   url: string;
   target?: string;
 }
 
-export type PrismicLinkProps = PrismicInternalLinkProps | PrismicExternalLinkProps;
+export type PrismicLinkProps =
+  | PrismicInternalLinkProps
+  | PrismicExternalLinkProps
+  | PrismicRichTextInternalLinkProps
+  | PrismicRichTextExternalLinkProps;
 
 export type LinkResolver = <ExtraData = any>(
   linkData?: PrismicLinkProps,
@@ -24,8 +38,7 @@ export type LinkResolver = <ExtraData = any>(
 
 export interface Edge {
   node: {
-    link_type: string;
-    _meta: PrismicMeta;
+    _meta: PrismicMetaProps;
   };
   cursor: string;
   endCursor: string;
@@ -34,6 +47,7 @@ export interface Edge {
 export interface Page {
   type: string;
   component: string;
+  fragments?: string;
   langs?: string[];
   sortBy?: string;
   path: string;
