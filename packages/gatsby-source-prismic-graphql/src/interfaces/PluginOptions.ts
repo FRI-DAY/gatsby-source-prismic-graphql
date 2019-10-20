@@ -44,10 +44,15 @@ export interface Edge {
   endCursor: string;
 }
 
+export interface Fragments {
+  path: string;
+  entries?: string[];
+}
+
 export interface Page {
   type: string;
   component: string;
-  fragments?: string;
+  fragments?: Fragments;
   langs?: string[];
   sortBy?: string;
   path: string;
