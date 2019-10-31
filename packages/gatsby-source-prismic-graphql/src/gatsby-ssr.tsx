@@ -3,12 +3,16 @@ import { PluginOptions } from './interfaces/PluginOptions';
 
 interface OnRenderBodyArgs {
   setHeadComponents(args: React.ReactElement<any>[]): void;
+  setPostBodyComponents(args: React.ReactElement<any>[]): void;
 }
 
-exports.onRenderBody = ({ setHeadComponents }: OnRenderBodyArgs, options: PluginOptions) => {
+exports.onRenderBody = (
+  { setHeadComponents, setPostBodyComponents }: OnRenderBodyArgs,
+  options: PluginOptions
+) => {
   const accessToken = options.previews ? null : options.accessToken;
 
-  const components = [
+  const headComponents = [
     <script
       key="prismic-config"
       dangerouslySetInnerHTML={{
@@ -22,15 +26,18 @@ exports.onRenderBody = ({ setHeadComponents }: OnRenderBodyArgs, options: Plugin
     />,
   ];
 
+  const postBodyComponents = [];
   if (options.omitPrismicScript !== true) {
-    components.push(
+    postBodyComponents.push(
       <script
         key="prismic-script"
         type="text/javascript"
+        async
         src="//static.cdn.prismic.io/prismic.min.js"
       />
     );
   }
 
-  setHeadComponents(components);
+  setHeadComponents(headComponents);
+  setPostBodyComponents(postBodyComponents);
 };
