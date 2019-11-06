@@ -43,7 +43,7 @@ function createDocumentPreviewPage(
   const { graphqlQuery, graphqlFragments } = getQueryAndFragments(
     page.component,
     page.gqlFragmentsFile || options.gqlFragmentsFile,
-    page.gqlfragments
+    page.gqlFragments
   );
   createPage({
     path: page.path,

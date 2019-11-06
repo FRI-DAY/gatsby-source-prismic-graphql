@@ -48,7 +48,7 @@ export interface Page {
   type: string;
   component: string;
   gqlFragmentsFile?: string;
-  gqlfragments?: string[];
+  gqlFragments?: string[];
   langs?: string[];
   sortBy?: string;
   path: string;
