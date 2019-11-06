@@ -34,8 +34,17 @@ function createGeneralPreviewPage(createPage: Function, options: PluginOptions):
   });
 }
 
-function createDocumentPreviewPage(createPage: Function, page: Page, lang?: string | null): void {
-  const { graphqlQuery, graphqlFragments } = getQueryAndFragments(page.component, page.fragments);
+function createDocumentPreviewPage(
+  createPage: Function,
+  page: Page,
+  options: PluginOptions,
+  lang?: string | null
+): void {
+  const { graphqlQuery, graphqlFragments } = getQueryAndFragments(
+    page.component,
+    page.gqlFragmentsFile || options.gqlFragmentsFile,
+    page.gqlfragments
+  );
   createPage({
     path: page.path,
     component: page.component,
@@ -186,7 +195,7 @@ exports.createPages = async ({ graphql, actions: { createPage } }: any, options:
       const newEndCursor: string = response.pageInfo.endCursor;
       await createPagesForType(page, lang, newEndCursor, documents);
     } else {
-      createDocumentPreviewPage(createPage, page, lang);
+      createDocumentPreviewPage(createPage, page, options, lang);
       createDocumentPages(createPage, documents, options, page);
     }
   }

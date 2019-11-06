@@ -1,7 +1,6 @@
 import fs from 'fs';
 import _ from 'lodash';
 import { babelParseToAst } from 'gatsby/dist/utils/babel-parse-to-ast';
-import { Fragments } from '../interfaces/PluginOptions';
 
 interface Result {
   graphqlQuery: string | null;
@@ -43,13 +42,17 @@ const execute = (path: string, entries: string[]) => {
   return result;
 };
 
-export const getQueryAndFragments = (componentPath: string, fragments?: Fragments) => {
+export const getQueryAndFragments = (
+  componentPath: string,
+  gqlFragmentsFile?: string,
+  gqlFragments?: string[]
+) => {
   if (typeof cache[componentPath] === 'undefined') {
     const result = execute(componentPath, []);
-    if (fragments) {
+    if (gqlFragmentsFile) {
       result.graphqlFragments = [
         ...result.graphqlFragments,
-        ...execute(fragments.path, fragments.entries || []).graphqlFragments,
+        ...execute(gqlFragmentsFile, gqlFragments || []).graphqlFragments,
       ];
     }
     cache[componentPath] = result;
