@@ -1,27 +1,20 @@
 import path from 'path';
 import { onCreateWebpackConfig, sourceNodes } from 'gatsby-source-graphql-universal/gatsby-node';
-import { fieldName, PrismicLink, typeName } from './utils';
+import { getPrismicDomain, createHttpLink } from './utils';
 import { Page, PluginOptions, Edge, PrismicLinkProps } from './interfaces/PluginOptions';
 import { createRemoteFileNode } from 'gatsby-source-filesystem';
 import { getQueryAndFragments } from './utils/graphql';
+import { fieldName, typeName } from './constants';
+import { downloadIntrospectionQueryResultData } from './utils/downloadIntrospectionQueryResultData';
 
 exports.onCreateWebpackConfig = onCreateWebpackConfig;
-
-exports.sourceNodes = (ref: any, options: PluginOptions) => {
-  const opts = {
-    fieldName,
-    typeName,
-    createLink: () =>
-      PrismicLink({
-        uri: `https://${options.repositoryName}.prismic.io/graphql`,
-        credentials: 'same-origin',
-        accessToken: options.accessToken as any,
-        customRef: options.prismicRef as any,
-      }),
-    ...options,
-  };
-
-  return sourceNodes(ref, opts);
+exports.sourceNodes = async (ref: any, options: PluginOptions) => {
+  return sourceNodes(ref, {
+    url: getPrismicDomain(options.repositoryName) + 'graphql',
+    fieldName: fieldName,
+    typeName: typeName,
+    createLink: () => createHttpLink(options.repositoryName, options.accessToken),
+  });
 };
 
 function createGeneralPreviewPage(createPage: Function, options: PluginOptions): void {
@@ -68,8 +61,6 @@ function createDocumentPages(
   options: PluginOptions,
   page: Page
 ): void {
-  const { graphqlQuery, graphqlFragments } = getQueryAndFragments(page.component);
-
   // Cycle through each document returned from query...
   edges.forEach(({ cursor, node }, index: number) => {
     const previousEdge = index > 1 ? edges[index - 1] : null;
@@ -81,28 +72,15 @@ function createDocumentPages(
       _meta: node._meta,
     };
 
-    const extraData = (page.extraFields || []).reduce(
-      (res, current: string) => {
-        res[current] = (node as any)[current];
-        return res;
-      },
-      {} as any
-    );
-
     createPage({
-      path: options.linkResolver(data, extraData),
+      path: options.linkResolver(data),
       component: page.component,
       context: {
-        rootQuery: graphqlQuery,
-        queryFragments: graphqlFragments,
         ...node._meta,
         cursor,
-        paginationPreviousMeta: previousEdge ? previousEdge.node._meta : null,
-        paginationPreviousUid: previousEdge ? previousEdge.node._meta.uid : '',
-        paginationPreviousLang: previousEdge ? previousEdge.node._meta.lang : '',
-        paginationNextMeta: nextEdge ? nextEdge.node._meta : null,
-        paginationNextUid: nextEdge ? nextEdge.node._meta.uid : '',
-        paginationNextLang: nextEdge ? nextEdge.node._meta.lang : '',
+        previousDocument: previousEdge ? previousEdge.node._meta : null,
+        nextDocument: nextEdge ? nextEdge.node._meta : null,
+
         // pagination helpers for overcoming backwards pagination issues cause by Prismic's 20-document query limit
         lastQueryChunkEndCursor: previousEdge ? previousEdge.endCursor : '',
       },
@@ -113,16 +91,13 @@ function createDocumentPages(
 const getDocumentsQuery = ({
   documentType,
   sortType,
-  extraFields,
 }: {
   documentType: string;
   sortType: string;
-  extraFields: string[];
 }): string => `
   query AllPagesQuery ($after: String, $lang: String, $sortBy: ${sortType}) {
     prismic {
       ${documentType} (
-        first: 20
         after: $after
         sortBy: $sortBy
         lang: $lang
@@ -133,7 +108,6 @@ const getDocumentsQuery = ({
           endCursor
         }
         edges {
-          cursor
           node {
             _meta {
               id
@@ -141,10 +115,8 @@ const getDocumentsQuery = ({
               uid
               type
             }
-            ${extraFields.map(field => {
-              return field + '\n';
-            })}
           }
+          cursor
         }
       }
     }
@@ -171,7 +143,6 @@ exports.createPages = async ({ graphql, actions: { createPage } }: any, options:
     const query: string = getDocumentsQuery({
       documentType,
       sortType,
-      extraFields: page.extraFields || [],
     });
     const { data, errors } = await graphql(query, {
       after: endCursor,
@@ -210,6 +181,7 @@ exports.createPages = async ({ graphql, actions: { createPage } }: any, options:
       const langs = page.langs ||
         options.langs ||
         (options.defaultLang && [options.defaultLang]) || [null];
+
       langs.forEach((lang: string | null) => pageCreators.push(createPagesForType(page, lang)));
     }
   );
@@ -220,13 +192,14 @@ exports.createPages = async ({ graphql, actions: { createPage } }: any, options:
 
 exports.createResolvers = (
   { actions, cache, createNodeId, createResolvers, store, reporter }: any,
-  { sharpKeys = [/image|photo|picture/] }: PluginOptions
+  { sharpKeys = [/image|photo|picture/], pages = [] }: PluginOptions
 ) => {
   const { createNode } = actions;
 
   const state = store.getState();
   const [prismicSchema = {}] = state.schemaCustomization.thirdPartySchemas;
   const typeMap = prismicSchema._typeMap;
+
   const resolvers: { [key: string]: any } = {};
 
   for (const typeName in typeMap) {
@@ -272,4 +245,8 @@ exports.createResolvers = (
   if (Object.keys(resolvers).length) {
     createResolvers(resolvers);
   }
+};
+
+exports.onPreInit = (args: any, options: PluginOptions) => {
+  downloadIntrospectionQueryResultData(options.repositoryName);
 };

@@ -27,6 +27,5 @@ export const wrapPageElement = ({ element, props }: WrapPageArgs, options: any) 
       </WrapPage>
     );
   }
-
   return element;
 };

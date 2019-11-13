@@ -1,25 +1,27 @@
-import { ApolloClient } from 'apollo-boost';
-import { InMemoryCache, IntrospectionFragmentMatcher } from 'apollo-cache-inmemory';
-import { getIntrospectionQueryResultData } from './getIntrospectionQueryResultData';
-import { PrismicLink } from './index';
+import {
+  IntrospectionFragmentMatcher,
+  InMemoryCache,
+  ApolloClient,
+  NormalizedCacheObject,
+} from 'apollo-boost';
+import { createHttpLink } from './index';
+import introspectionQueryResultData from '../fragmentTypes.json';
 
-let client: ApolloClient<any> | undefined = undefined;
+let client: null | ApolloClient<NormalizedCacheObject> = null;
 
-export const getApolloClient = async ({ repositoryName }: any): Promise<ApolloClient<any>> => {
-  if (!client) {
-    const introspectionQueryResultData: any = await getIntrospectionQueryResultData({
-      repositoryName,
-    });
+export const getApolloClient = (
+  repositoryName: string,
+  accessToken?: string
+): ApolloClient<NormalizedCacheObject> => {
+  if (client === null) {
     const fragmentMatcher = new IntrospectionFragmentMatcher({
       introspectionQueryResultData,
     });
-
+    const link = createHttpLink(repositoryName, accessToken);
     client = new ApolloClient({
+      ssrMode: true,
+      link: link,
       cache: new InMemoryCache({ fragmentMatcher }),
-      link: PrismicLink({
-        uri: `https://${repositoryName}.prismic.io/graphql`,
-        credentials: 'same-origin',
-      }),
     });
   }
   return client;

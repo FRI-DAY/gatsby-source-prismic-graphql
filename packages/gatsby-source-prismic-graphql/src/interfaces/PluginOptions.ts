@@ -57,7 +57,7 @@ export interface Page {
 
 export interface PluginOptions {
   repositoryName: string;
-  accessToken?: null | string;
+  accessToken?: string;
   prismicRef?: null | string;
   linkResolver: LinkResolver;
   defaultLang?: string;

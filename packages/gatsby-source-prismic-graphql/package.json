@@ -11,7 +11,7 @@
   "bugs": {
     "url": "https://github.com/birkir/gatsby-source-prismic-graphql/issues"
   },
-  "version": "3.5.2",
+  "version": "3.5.3",
   "main": "index.js",
   "files": [
     "*.js",
@@ -28,8 +28,9 @@
   },
   "types": "./types/index.d.ts",
   "dependencies": {
-    "apollo-boost": "^0.3.1",
+    "apollo-boost": "0.4.4",
     "apollo-link-context": "^1.0.17",
+    "apollo-link-http": "1.5.16",
     "gatsby-image": "^2.2.4",
     "gatsby-source-filesystem": "^2.1.2",
     "gatsby-source-graphql": "^2.0.15",

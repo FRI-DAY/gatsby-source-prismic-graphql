@@ -1,13 +1,11 @@
 import { getIsolatedQuery } from 'gatsby-source-graphql-universal';
 import { pick, get } from 'lodash';
-import Prismic from 'prismic-javascript';
 import React from 'react';
 import traverse from 'traverse';
-import { fieldName, getCookies, typeName } from '../utils';
+import { inPreview, parseQueryString } from '../utils';
 import { createLoadingScreen } from '../utils/createLoadingScreen';
 import { getApolloClient } from '../utils/getApolloClient';
-import { parseQueryString } from '../utils/parseQueryString';
-import { KEYS } from '../constants';
+import { KEYS, fieldName, typeName } from '../constants';
 
 const stripSharp = (query: any) => {
   return traverse(query).map(function(x) {
@@ -31,7 +29,10 @@ interface WrapPageState {
 
 export class WrapPage extends React.PureComponent<any, WrapPageState> {
   state: WrapPageState = {
-    data: this.props.data,
+    data: {
+      ...this.props.data,
+      inPreview: false,
+    },
     loading: false,
     error: null,
   };
@@ -45,7 +46,6 @@ export class WrapPage extends React.PureComponent<any, WrapPageState> {
         params[key] = qs.get(key);
       }
     });
-
     return params;
   }
 
@@ -66,10 +66,7 @@ export class WrapPage extends React.PureComponent<any, WrapPageState> {
     const { pageContext, options } = this.props;
     const { rootQuery = null } = pageContext;
 
-    const cookies = getCookies();
-    const hasCookie = cookies.has(Prismic.experimentCookie) || cookies.has(Prismic.previewCookie);
-
-    if (hasCookie && options.previews !== false && rootQuery) {
+    if (inPreview() && options.previews !== false && rootQuery !== null) {
       const closeLoading = createLoadingScreen();
       this.setState({ loading: true });
       this.load()
@@ -77,7 +74,7 @@ export class WrapPage extends React.PureComponent<any, WrapPageState> {
           this.setState({
             loading: false,
             error: null,
-            data: { ...this.state.data, prismic: res.data },
+            data: { ...this.state.data, prismic: res.data, inPreview: true },
           });
           closeLoading();
         })
@@ -94,12 +91,13 @@ export class WrapPage extends React.PureComponent<any, WrapPageState> {
     const keys = [...(this.props.options.passContextKeys || []), ...KEYS];
     const variables = { ...pick(this.params, keys) };
 
-    return getApolloClient(this.props.options).then(client => {
-      return client.query({
-        query: stripSharp(getIsolatedQuery(query, fieldName, typeName)),
-        fetchPolicy: 'network-only',
-        variables,
-      });
+    const { repositoryName, accessToken } = this.props.options;
+
+    const client = getApolloClient(repositoryName, accessToken);
+    return client.query({
+      query: stripSharp(getIsolatedQuery(query, fieldName, typeName)),
+      fetchPolicy: 'network-only',
+      variables,
     });
   };
 

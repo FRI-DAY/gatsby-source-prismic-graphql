@@ -1,7 +1,6 @@
 import React from 'react';
 import Prismic from 'prismic-javascript';
-import { linkResolver, getCookies } from '../utils';
-import { parseQueryString } from '../utils/parseQueryString';
+import { linkResolver, getCookies, parseQueryString } from '../utils';
 import { Page } from '../interfaces/PluginOptions';
 import { Document } from 'prismic-javascript/d.ts/documents';
 import { KEYS } from '../constants';

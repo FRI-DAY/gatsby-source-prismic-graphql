@@ -1,21 +1,7 @@
-import { setContext } from 'apollo-link-context';
-import { HttpLink } from 'apollo-link-http';
-import { HttpOptions } from 'apollo-link-http-common';
+import { createHttpLink as _createHttpLink } from 'apollo-link-http';
 import Prismic from 'prismic-javascript';
-import { parseQueryString } from './parseQueryString';
 import { LinkResolver } from '../interfaces/PluginOptions';
-
-interface IPrismicLinkArgs extends HttpOptions {
-  uri: string;
-  accessToken?: string;
-  customRef?: string;
-  credentials?: string;
-  useGETForQueries?: boolean;
-}
-
-// @todo should this be configurable?
-export const fieldName = 'prismic';
-export const typeName = 'PRISMIC';
+import { ApolloLink } from 'apollo-link';
 
 // keep link resolver function
 export let linkResolver: LinkResolver = () => '/';
@@ -24,86 +10,129 @@ export function registerLinkResolver(resolver: LinkResolver) {
   linkResolver = resolver;
 }
 
-export function getCookies() {
-  return parseQueryString(document.cookie, ';');
-}
+/**
+ * pass query string into an object
+ * @param qs
+ * @param delimiter
+ */
+export const parseQueryString = (qs: string = '', delimiter: string = '&'): Map<string, string> => {
+  return new Map(
+    qs.split(delimiter).map(item => {
+      const [key, ...value] = item.split('=').map(part => {
+        try {
+          return decodeURIComponent(part.trim());
+        } catch (ex) {
+          return part.trim();
+        }
+      });
+      return [key, value.join('=')] as [string, string];
+    })
+  );
+};
 
-export function getDocumentIndexFromCursor(cursor: string) {
-  return atob(cursor).split(':')[1];
-}
+/**
+ * retries cookies
+ */
+export const getCookies = () => {
+  return typeof window !== 'undefined' ? parseQueryString(document.cookie, ';') : new Map();
+};
 
-export function getCursorFromDocumentIndex(index: number) {
-  return btoa(`arrayconnection:${index}`);
-}
+/**
+ * returns boolean indicating if we are running in preview mode
+ */
+export const inPreview = () => {
+  const cookies = getCookies();
+  return cookies.has(Prismic.experimentCookie) || cookies.has(Prismic.previewCookie);
+};
 
-export function fetchStripQueryWhitespace(url: string, ...args: any) {
+/**
+ * returns the prismic full domain
+ * @param repositoryName
+ */
+export const getPrismicDomain = (repositoryName: string) => {
+  return `https://${repositoryName}.prismic.io/`;
+};
+
+const refCache = {
+  masterRef: '',
+};
+/**
+ * returns the needed prismic headers to
+ * @param repositoryName
+ * @param accessToken
+ */
+export const getPrismicHeaders = async (repositoryName: string, accessToken?: string) => {
+  let prismicRef;
+  if (inPreview()) {
+    const cookies = getCookies();
+    prismicRef = cookies.get(Prismic.previewCookie) || cookies.get(Prismic.experimentCookie);
+  } else if (!refCache.masterRef) {
+    const prismicClient = Prismic.client(`${getPrismicDomain(repositoryName)}/api`, {
+      accessToken,
+    });
+    refCache.masterRef = prismicRef = (await prismicClient.getApi()).masterRef.ref;
+  } else {
+    prismicRef = refCache.masterRef;
+  }
+
+  if (accessToken) {
+    return {
+      Authorization: `Token ${accessToken}`,
+      'Prismic-ref': prismicRef,
+    };
+  } else {
+    return {
+      'Prismic-ref': prismicRef,
+    };
+  }
+};
+
+export const stripWhitespace = (url: string) => {
   const [hostname, qs = ''] = url.split('?');
   const queryString = parseQueryString(qs);
   if (queryString.has('query')) {
     queryString.set(
       'query',
       String(queryString.get('query'))
-        .replace(/\#.*\n/g, '')
-        .replace(/\s+/g, ' ')
+        .split(/\n\r?/gm)
+        .map((current: string) => {
+          return current
+            .trim()
+            .replace(/\#.*/g, '')
+            .replace(/\s+/g, ' ')
+            .replace(/\{\s+/gm, '{')
+            .replace(/\s+\{/gm, '{')
+            .replace(/\s+\}/gm, '}')
+            .replace(/\s+\}/gm, '}');
+        })
+        .join(' ')
     );
   }
   const updatedQs = Array.from(queryString)
     .map(n => n.map(j => encodeURIComponent(j)).join('='))
     .join('&');
-  const updatedUrl = `${hostname}?${updatedQs}`;
-
-  return fetch(updatedUrl, ...args);
-}
+  return `${hostname}?${updatedQs}`;
+};
 
 /**
- * Apollo Link for Prismic
- * @param options Options
+ * creates apollo link
+ * @param repositoryName
+ * @param accessToken
  */
-export function PrismicLink({ uri, accessToken, customRef, ...rest }: IPrismicLinkArgs) {
-  const BaseURIReg = /^(https?:\/\/.+?\..+?\..+?)\/graphql\/?$/;
-  const matches = uri.match(BaseURIReg);
-  if (matches && matches[1]) {
-    const prismicClient = Prismic.client(`${matches[1]}/api`, { accessToken });
-    const prismicLink = setContext(
-      async (request, options: { headers: { [key: string]: string } }) => {
-        let prismicRef;
-        if (typeof window !== 'undefined' && document.cookie) {
-          const cookies = getCookies();
-          if (cookies.has(Prismic.experimentCookie)) {
-            prismicRef = cookies.get(Prismic.experimentCookie);
-          } else if (cookies.has(Prismic.previewCookie)) {
-            prismicRef = cookies.get(Prismic.previewCookie);
-          }
-        }
-        if (!prismicRef) {
-          const api = await prismicClient.getApi();
-          prismicRef = api.masterRef.ref;
-        }
-        const authorizationHeader = accessToken ? { Authorization: `Token ${accessToken}` } : {};
+export const createHttpLink = (repositoryName: string, accessToken?: string): ApolloLink => {
+  return _createHttpLink({
+    uri: getPrismicDomain(repositoryName) + 'graphql',
 
-        // if custom ref has been defined, then use that to pull content instead of default master ref
-        prismicRef =
-          typeof customRef === 'undefined' || customRef === null ? prismicRef : customRef;
+    useGETForQueries: true,
 
-        return {
-          headers: {
-            ...options.headers,
-            ...authorizationHeader,
-            'Prismic-ref': prismicRef,
-          },
-        };
-      }
-    );
-
-    const httpLink = new HttpLink({
-      uri,
-      useGETForQueries: true,
-      ...rest,
-      fetch: fetchStripQueryWhitespace,
-    });
-
-    return prismicLink.concat(httpLink);
-  } else {
-    throw new Error(`${uri} isn't a valid Prismic GraphQL endpoint`);
-  }
-}
+    fetch: async (url: string, options: any) => {
+      url = stripWhitespace(url);
+      const headers = await getPrismicHeaders(repositoryName, accessToken);
+      options.headers = {
+        ...(options.headers || {}),
+        ...headers,
+      };
+      return fetch(url, options);
+    },
+  });
+};

@@ -11,34 +11,34 @@ const cache: {
   [p: string]: Result;
 } = {};
 
-const execute = (path: string, entries: string[]) => {
-  const result: Result = { graphqlQuery: null, graphqlFragments: [] };
-
+const getAst = (path: string) => {
   const content = fs.readFileSync(path, 'utf-8');
   const ast = babelParseToAst(content, path);
 
-  _.get(ast, 'program.body', [])
-    .filter((n: any) => n.type === 'ExportNamedDeclaration')
-    .forEach((exp: any) => {
-      const name = _.get(exp, 'declaration.declarations.0.id.name') as string;
+  return _.get(ast, 'program.body', []).filter((n: any) => n.type === 'ExportNamedDeclaration');
+};
 
-      if (name === 'query') {
-        result.graphqlQuery = _.get(
-          exp,
-          'declaration.declarations.0.init.quasi.quasis.0.value.raw'
-        );
-      } else if (entries.length > 0 && entries.includes(name)) {
-        result.graphqlFragments.push(_.get(
-          exp,
-          'declaration.declarations.0.init.quasi.quasis.0.value.raw'
-        ) as string);
-      } else if (/fragment$/i.test(name)) {
-        result.graphqlFragments.push(_.get(
-          exp,
-          'declaration.declarations.0.init.quasi.quasis.0.value.raw'
-        ) as string);
-      }
-    });
+const execute = (path: string, entries: string[]) => {
+  const result: Result = { graphqlQuery: null, graphqlFragments: [] };
+
+  let previewQuery = null;
+  let query = null;
+
+  getAst(path).forEach((exp: any) => {
+    const name = _.get(exp, 'declaration.declarations.0.id.name') as string;
+    if (name === 'previewQuery') {
+      previewQuery = _.get(exp, 'declaration.declarations.0.init.quasi.quasis.0.value.raw');
+    } else if (name === 'query') {
+      query = _.get(exp, 'declaration.declarations.0.init.quasi.quasis.0.value.raw');
+    } else if (entries.length > 0 && entries.includes(name)) {
+      result.graphqlFragments.push(_.get(
+        exp,
+        'declaration.declarations.0.init.quasi.quasis.0.value.raw'
+      ) as string);
+    }
+  });
+
+  result.graphqlQuery = previewQuery || query;
   return result;
 };
 
