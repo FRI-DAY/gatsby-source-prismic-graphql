@@ -1,13 +1,53 @@
 import path from 'path';
 import { onCreateWebpackConfig, sourceNodes } from 'gatsby-source-graphql-universal/gatsby-node';
-import { getPrismicDomain, createHttpLink } from './utils';
-import { Page, PluginOptions, Edge, PrismicLinkProps } from './interfaces/PluginOptions';
+import { getPrismicDomain, createHttpLink, resolveQuery } from './utils';
+import { Page, PluginOptions, Edge, LinkResolver } from './interfaces/PluginOptions';
 import { createRemoteFileNode } from 'gatsby-source-filesystem';
-import { getQueryAndFragments } from './utils/graphql';
+import { GraphqlFragment, extractFragments, extractRootQuery } from './utils/graphql';
 import { fieldName, typeName } from './constants';
 import { downloadIntrospectionQueryResultData } from './utils/downloadIntrospectionQueryResultData';
 
+const computePagedQueries = async (
+  lang: string,
+  page: Page,
+  graphql: any,
+  fragments: GraphqlFragment[]
+) => {
+  const result: {
+    [p: string]: Edge[];
+  } = {};
+
+  const pagedQueries = page.pagedQueries || [];
+  for (const pagedQuery of pagedQueries) {
+    let edges: Edge[] = [];
+    let pageInfo = {
+      hasNextPage: true,
+      endCursor: '',
+    };
+
+    const resolvedQuery = resolveQuery(pagedQuery.query, fragments, pagedQuery.fragments);
+    while (pageInfo.hasNextPage) {
+      const { data, errors } = await graphql(resolvedQuery, {
+        cursor: pageInfo.endCursor,
+        after: pageInfo.endCursor,
+        lang: lang || '',
+      });
+
+      if (errors && errors.length) {
+        throw errors[0];
+      }
+      const response = data.prismic[pagedQuery.name];
+
+      edges = [...edges, ...response.edges];
+      pageInfo = response.pageInfo;
+    }
+    result[pagedQuery.name] = edges;
+  }
+  return result;
+};
+
 exports.onCreateWebpackConfig = onCreateWebpackConfig;
+
 exports.sourceNodes = async (ref: any, options: PluginOptions) => {
   return sourceNodes(ref, {
     url: getPrismicDomain(options.repositoryName) + 'graphql',
@@ -17,76 +57,79 @@ exports.sourceNodes = async (ref: any, options: PluginOptions) => {
   });
 };
 
-function createGeneralPreviewPage(createPage: Function, options: PluginOptions): void {
+const createGeneralPreviewPage = (createPage: Function, options: PluginOptions): void => {
   createPage({
     path: (options.previewPath || '/preview').replace(/^\//, ''),
     component: path.resolve(path.join(__dirname, 'components', 'PreviewPage.js')),
     context: {
-      prismicPreviewPage: true,
+      isPreviewPage: true,
     },
   });
-}
+};
 
-function createDocumentPreviewPage(
+const createDocumentPreviewPage = async (
   createPage: Function,
   page: Page,
-  options: PluginOptions,
-  lang?: string | null
-): void {
-  const { graphqlQuery, graphqlFragments } = getQueryAndFragments(
-    page.component,
-    page.gqlFragmentsFile || options.gqlFragmentsFile,
-    page.gqlFragments
-  );
-  createPage({
+  lang: string,
+  rootQuery: string | null,
+  fragments: GraphqlFragment[],
+  pagedQueryResults: any
+) => {
+  await createPage({
     path: page.path,
     component: page.component,
     context: {
-      rootQuery: graphqlQuery,
-      queryFragments: graphqlFragments,
+      isPreviewPage: true,
+      rootQuery,
+      fragments,
+      page,
+      pagedQueryResults,
       id: '',
       uid: '',
-      lang,
-      paginationPreviousUid: '',
-      paginationPreviousLang: '',
-      paginationNextUid: '',
-      paginationNextLang: '',
+      lang: lang || '',
     },
   });
-}
+};
 
-function createDocumentPages(
+const createDocumentPages = async (
   createPage: Function,
   edges: Edge[],
-  options: PluginOptions,
-  page: Page
-): void {
+  page: Page,
+  lang: string,
+  rootQuery: string | null,
+  fragments: GraphqlFragment[],
+  pagedQueryResults: any,
+  linkResolver: LinkResolver
+) => {
   // Cycle through each document returned from query...
-  edges.forEach(({ cursor, node }, index: number) => {
+  edges.forEach(({ cursor, node }, index) => {
     const previousEdge = index > 1 ? edges[index - 1] : null;
     const nextEdge = index < edges.length - 1 ? edges[index + 1] : null;
 
     // ...and create the page
-    const data: PrismicLinkProps = {
-      link_type: 'Link.document',
-      _meta: node._meta,
-    };
-
     createPage({
-      path: options.linkResolver(data),
+      path: linkResolver({
+        _meta: node._meta,
+        link_type: 'Link.document',
+      }),
       component: page.component,
       context: {
-        ...node._meta,
+        rootQuery,
+        fragments,
         cursor,
+        page,
+        pagedQueryResults,
+
+        uid: node._meta.uid || '',
+        id: node._meta.id || '',
+        lang: lang,
+
         previousDocument: previousEdge ? previousEdge.node._meta : null,
         nextDocument: nextEdge ? nextEdge.node._meta : null,
-
-        // pagination helpers for overcoming backwards pagination issues cause by Prismic's 20-document query limit
-        lastQueryChunkEndCursor: previousEdge ? previousEdge.endCursor : '',
       },
     });
   });
-}
+};
 
 const getDocumentsQuery = ({
   documentType,
@@ -124,19 +167,17 @@ const getDocumentsQuery = ({
 `;
 
 exports.createPages = async ({ graphql, actions: { createPage } }: any, options: PluginOptions) => {
-  createGeneralPreviewPage(createPage, options);
-
   /**
    * Helper that recursively queries GraphQL to collect all documents for the given
    * page type. Once all documents are collected, it creates pages for them all.
    * Prismic GraphQL queries only return up to 20 results per query)
    */
-  async function createPagesForType(
+  const createPagesForType = async (
     page: Page,
-    lang: string | null,
-    endCursor: string = '',
-    documents: [any?] = []
-  ): Promise<any> {
+    lang: string,
+    rootQuery: string | null,
+    fragments: GraphqlFragment[]
+  ) => {
     // Prepare and execute query
     const documentType: string = `all${page.type}s`;
     const sortType: string = `PRISMIC_Sort${page.type}y`;
@@ -144,49 +185,75 @@ exports.createPages = async ({ graphql, actions: { createPage } }: any, options:
       documentType,
       sortType,
     });
-    const { data, errors } = await graphql(query, {
-      after: endCursor,
-      lang: lang,
-      sortBy: page.sortBy,
-    });
 
-    if (errors && errors.length) {
-      throw errors[0];
+    let documents: any[] = [];
+    let pageInfo = {
+      hasNextPage: true,
+      endCursor: '',
+    };
+
+    // retrieve all pages for the given page type and language
+    while (pageInfo.hasNextPage) {
+      const { data, errors } = await graphql(query, {
+        after: pageInfo.endCursor,
+        lang: lang,
+        sortBy: page.sortBy,
+      });
+
+      if (errors && errors.length) {
+        throw errors[0];
+      }
+
+      const response = data.prismic[documentType];
+      documents = [...documents, ...response.edges];
+      pageInfo = response.pageInfo;
     }
 
-    const response = data.prismic[documentType];
+    // create preview page and pages
+    const pagedQueryResults = await computePagedQueries(lang, page, graphql, fragments);
+    await createDocumentPreviewPage(
+      createPage,
+      page,
+      lang,
+      rootQuery,
+      fragments,
+      pagedQueryResults
+    );
+    await createDocumentPages(
+      createPage,
+      documents,
+      page,
+      lang,
+      rootQuery,
+      fragments,
+      pagedQueryResults,
+      options.linkResolver
+    );
+  };
 
-    // Add last end cursor to all edges to enable pagination context when creating pages
-    response.edges.forEach((edge: any) => (edge.endCursor = endCursor));
-
-    // Stage documents for page creation
-    documents = [...documents, ...response.edges] as [any?];
-
-    if (response.pageInfo.hasNextPage) {
-      const newEndCursor: string = response.pageInfo.endCursor;
-      await createPagesForType(page, lang, newEndCursor, documents);
-    } else {
-      createDocumentPreviewPage(createPage, page, options, lang);
-      createDocumentPages(createPage, documents, options, page);
-    }
-  }
+  //create general preview page
+  createGeneralPreviewPage(createPage, options);
 
   // Prepare to create all the pages
   const pages: Page[] = options.pages || [];
   const pageCreators: Promise<any>[] = [];
 
+  // extract all graphql fragments
+  const fragments = extractFragments(options.fragmentsFile);
+
   // Create pageCreator promises for each page/language combination
-  pages.forEach(
-    (page: Page): void => {
-      const langs = page.langs ||
-        options.langs ||
-        (options.defaultLang && [options.defaultLang]) || [null];
+  pages.forEach((page: Page) => {
+    const rootQuery = extractRootQuery(page.component);
+    const langs = page.langs ||
+      options.langs ||
+      (options.defaultLang && [options.defaultLang]) || [''];
 
-      langs.forEach((lang: string | null) => pageCreators.push(createPagesForType(page, lang)));
-    }
-  );
+    langs.forEach((lang: string) =>
+      pageCreators.push(createPagesForType(page, lang, rootQuery, fragments))
+    );
+  });
 
-  // Run all pageCreators simultaneously
+  // await all promises
   await Promise.all(pageCreators);
 };
 

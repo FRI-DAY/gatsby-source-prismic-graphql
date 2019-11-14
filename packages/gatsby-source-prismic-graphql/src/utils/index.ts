@@ -2,6 +2,7 @@ import { createHttpLink as _createHttpLink } from 'apollo-link-http';
 import Prismic from 'prismic-javascript';
 import { LinkResolver } from '../interfaces/PluginOptions';
 import { ApolloLink } from 'apollo-link';
+import { GraphqlFragment } from './graphql';
 
 // keep link resolver function
 export let linkResolver: LinkResolver = () => '/';
@@ -135,4 +136,19 @@ export const createHttpLink = (repositoryName: string, accessToken?: string): Ap
       return fetch(url, options);
     },
   });
+};
+
+export const resolveQuery = (
+  query: string,
+  fragments: GraphqlFragment[],
+  fragmentNames: string[] = []
+) => {
+  if (fragmentNames.length > 0) {
+    return `${query}${fragments
+      .filter(current => fragmentNames.includes(current.name))
+      .map(current => current.value)
+      .join(' ')}`;
+  } else {
+    return query;
+  }
 };

@@ -6,18 +6,19 @@ export const withPreview = (render: Function, query: any, fragments: any = []) =
     return render;
   }
 
-  if (!render) {
-    return null;
-  }
-
   const RenderComponent = ({ data }: any) => render(data);
+  const resolvedQuery = `${query.source}${fragments.map((item: any) => item.source).join(' ')}`;
 
   return (data: any) => (
     <WrapPage
       data={data}
       pageContext={{
-        rootQuery: query.source,
-        queryFragments: fragments.map((item: any) => item.source),
+        rootQuery: resolvedQuery,
+        pagedQueryResults: {},
+        fragments: [],
+        uid: '',
+        id: '',
+        lang: '',
       }}
       options={(window as any).prismicGatsbyOptions || {}}
     >

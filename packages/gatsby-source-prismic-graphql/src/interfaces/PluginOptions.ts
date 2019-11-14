@@ -39,20 +39,46 @@ export type LinkResolver = <ExtraData = any>(
 export interface Edge {
   node: {
     _meta: PrismicMetaProps;
+    [p: string]: any;
   };
   cursor: string;
-  endCursor: string;
+}
+
+export interface Context {
+  [p: string]: any;
+}
+
+export interface ContextCallbackVariables {
+  id: string;
+  uid: string;
+  lang: string;
+}
+
+export type ContextCallback = (
+  graphql: any,
+  options: PluginOptions,
+  page: Page,
+  variables: ContextCallbackVariables
+) => Promise<Context> | Context;
+
+export interface PagedQuery {
+  query: string;
+  name: string;
+  fragments: string[];
 }
 
 export interface Page {
   type: string;
   component: string;
-  gqlFragmentsFile?: string;
-  gqlFragments?: string[];
+  fragmentsFile?: string;
+  fragments?: string[];
   langs?: string[];
   sortBy?: string;
   path: string;
   extraFields?: string[];
+  pagedQueries?: PagedQuery[];
+
+  context?: Context | ContextCallback;
 }
 
 export interface PluginOptions {
@@ -62,11 +88,10 @@ export interface PluginOptions {
   linkResolver: LinkResolver;
   defaultLang?: string;
   langs?: string[];
-  passContextKeys?: string[];
   previewPath?: string;
   previews?: boolean;
   pages?: Page[];
   omitPrismicScript?: boolean;
   sharpKeys: RegExp[] | string[];
-  gqlFragmentsFile?: string;
+  fragmentsFile?: string;
 }

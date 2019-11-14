@@ -1,6 +1,6 @@
-import { PrismicMetaProps } from './interfaces/PluginOptions';
+export type StaticQueryVariable = 'uid' | 'lang' | 'id';
 
-export const KEYS: Array<keyof PrismicMetaProps> = ['uid', 'lang', 'id'];
+export const KEYS: StaticQueryVariable[] = ['uid', 'lang', 'id'];
 
 export const fieldName = 'prismic';
 
