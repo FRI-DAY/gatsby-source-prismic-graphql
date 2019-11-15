@@ -1,5 +1,6 @@
 import React from 'react';
 import { PluginOptions } from './interfaces/PluginOptions';
+import { WrapPage } from './components/WrapPage';
 
 interface OnRenderBodyArgs {
   setHeadComponents(args: React.ReactElement<any>[]): void;
@@ -40,4 +41,20 @@ exports.onRenderBody = (
 
   setHeadComponents(headComponents);
   setPostBodyComponents(postBodyComponents);
+};
+
+interface WrapPageArgs {
+  element: any;
+  props: any;
+}
+
+export const wrapPageElement = ({ element, props }: WrapPageArgs, options: any) => {
+  if (props.pageContext.rootQuery || props.pageContext.isPreviewPage) {
+    return (
+      <WrapPage key={props.location.key} options={options} {...props}>
+        {element}
+      </WrapPage>
+    );
+  }
+  return element;
 };

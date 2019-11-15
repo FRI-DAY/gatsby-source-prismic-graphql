@@ -168,6 +168,7 @@ export class WrapPage extends React.PureComponent<
 
   render() {
     const children = this.props.children as any;
+    const dataProp = this.props.data || {};
 
     return React.cloneElement(children, {
       ...children.props,
@@ -179,9 +180,9 @@ export class WrapPage extends React.PureComponent<
       },
 
       data: {
-        ...this.props.data,
+        ...dataProp,
         prismic: {
-          ...(this.props.data.prismic || {}),
+          ...(dataProp.prismic || {}),
           ...this.state.data,
         },
       },
