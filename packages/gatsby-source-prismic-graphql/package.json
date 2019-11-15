@@ -11,7 +11,7 @@
   "bugs": {
     "url": "https://github.com/birkir/gatsby-source-prismic-graphql/issues"
   },
-  "version": "3.6.0",
+  "version": "3.6.1",
   "main": "index.js",
   "files": [
     "*.js",
@@ -37,7 +37,8 @@
     "gatsby-source-graphql-universal": "^3.1.4",
     "prismic-javascript": "^2.0.1",
     "traverse": "^0.6.6",
-    "url-pattern": "^1.0.3"
+    "url-pattern": "^1.0.3",
+    "@babel/runtime": "7.3.1"
   },
   "peerDependencies": {
     "gatsby": ">2.0.0-alpha",
@@ -52,7 +53,6 @@
     "@babel/preset-env": "7.3.1",
     "@babel/preset-react": "7.0.0",
     "@babel/preset-typescript": "7.3.3",
-    "@babel/runtime": "7.3.1",
     "@types/lodash": "4.14.121",
     "@types/node": "11.9.4",
     "@types/node-fetch": "2.1.6",
