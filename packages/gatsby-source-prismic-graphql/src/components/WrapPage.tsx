@@ -177,10 +177,15 @@ export class WrapPage extends React.PureComponent<
         loading: this.state.loading,
         error: this.state.error,
       },
+
       data: {
         ...this.props.data,
-        ...this.state.data,
+        prismic: {
+          ...(this.props.data.prismic || {}),
+          ...this.state.data,
+        },
       },
+
       pagedResults: {
         ...this.props.pageContext.pagedQueryResults,
         ...this.state.pagedQueryResults,
