@@ -1,7 +1,7 @@
 import path from 'path';
 import { onCreateWebpackConfig, sourceNodes } from 'gatsby-source-graphql-universal/gatsby-node';
 import { getPrismicDomain, createHttpLink, resolveQuery } from './utils';
-import { Page, PluginOptions, Edge, LinkResolver } from './interfaces/PluginOptions';
+import { Page, PluginOptions, Edge, LinkResolver, PagedQuery } from './interfaces/PluginOptions';
 import { createRemoteFileNode } from 'gatsby-source-filesystem';
 import { GraphqlFragment, extractFragments, extractRootQuery } from './utils/graphql';
 import { fieldName, typeName } from './constants';
@@ -9,7 +9,7 @@ import { downloadIntrospectionQueryResultData } from './utils/downloadIntrospect
 
 const computePagedQueries = async (
   lang: string,
-  page: Page,
+  pagedQueries: PagedQuery[],
   graphql: any,
   fragments: GraphqlFragment[]
 ) => {
@@ -17,7 +17,6 @@ const computePagedQueries = async (
     [p: string]: Edge[];
   } = {};
 
-  const pagedQueries = page.pagedQueries || [];
   for (const pagedQuery of pagedQueries) {
     let edges: Edge[] = [];
     let pageInfo = {
@@ -209,8 +208,15 @@ exports.createPages = async ({ graphql, actions: { createPage } }: any, options:
       pageInfo = response.pageInfo;
     }
 
-    // create preview page and pages
-    const pagedQueryResults = await computePagedQueries(lang, page, graphql, fragments);
+    // run paged queries
+    const pagedQueryResults = await computePagedQueries(
+      lang,
+      page.pagedQueries || [],
+      graphql,
+      fragments
+    );
+
+    // create document type preview page
     await createDocumentPreviewPage(
       createPage,
       page,
@@ -219,6 +225,8 @@ exports.createPages = async ({ graphql, actions: { createPage } }: any, options:
       fragments,
       pagedQueryResults
     );
+
+    // create document types
     await createDocumentPages(
       createPage,
       documents,
@@ -237,6 +245,12 @@ exports.createPages = async ({ graphql, actions: { createPage } }: any, options:
   // Prepare to create all the pages
   const pages: Page[] = options.pages || [];
   const pageCreators: Promise<any>[] = [];
+
+  // combine page paged queries
+  const globalPagedQueries = options.pagedQueries || [];
+  pages.forEach(page => {
+    page.pagedQueries = [...globalPagedQueries, ...(page.pagedQueries || [])];
+  });
 
   // extract all graphql fragments
   const fragments = extractFragments(options.fragmentsFile);
@@ -314,6 +328,7 @@ exports.createResolvers = (
   }
 };
 
+/** download endpoint graphql introspection query result data */
 exports.onPreInit = (args: any, options: PluginOptions) => {
   downloadIntrospectionQueryResultData(options.repositoryName);
 };

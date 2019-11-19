@@ -94,4 +94,5 @@ export interface PluginOptions {
   omitPrismicScript?: boolean;
   sharpKeys: RegExp[] | string[];
   fragmentsFile?: string;
+  pagedQueries?: PagedQuery[];
 }
