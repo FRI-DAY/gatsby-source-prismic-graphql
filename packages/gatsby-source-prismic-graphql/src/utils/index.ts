@@ -68,7 +68,7 @@ export const getPrismicHeaders = async (repositoryName: string, accessToken?: st
     const cookies = getCookies();
     prismicRef = cookies.get(Prismic.previewCookie) || cookies.get(Prismic.experimentCookie);
   } else if (!refCache.masterRef) {
-    const prismicClient = Prismic.client(`${getPrismicDomain(repositoryName)}/api`, {
+    const prismicClient = Prismic.client(`${getPrismicDomain(repositoryName)}api`, {
       accessToken,
     });
     refCache.masterRef = prismicRef = (await prismicClient.getApi()).masterRef.ref;
